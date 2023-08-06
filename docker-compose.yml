@@ -1,0 +1,60 @@
+
+version: "3.9"
+services:
+  load_balancer:
+    image: nginx:stable-alpine3.17
+    container_name: load_balancer
+    networks:
+      - front
+      - back1
+      - back2
+    volumes:
+      - ./conf/load_balancer.conf:/etc/nginx/nginx.conf
+
+  nginx1:
+    image: ngx_alpine_light:0.2
+    container_name: nginx1
+    expose:
+      - 8080
+    networks:
+      - back1
+    healthcheck:
+      # test: ["CMD-SHELL", "echo -e \"GET /health HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n | nc localhost 8080 \""]
+      test: ["CMD", "echo", "-e", "\"GET /health HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n | nc localhost 8080 \""]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    volumes:
+      - ./conf/nginx1.conf:/etc/nginx/nginx.conf
+      - ./sites/nginx1/:/data/sites/
+    command: ["nginx", "-g", "daemon off;"]
+
+  nginx2:
+    image: ngx_alpine_light:0.2
+    container_name: nginx2
+    networks:
+      - back2
+    expose:
+      - 8080
+    healthcheck:
+      test: ["CMD-SHELL", "echo -e \"GET /health HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n | nc localhost 8080 \""]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    volumes:
+      - ./conf/nginx2.conf:/etc/nginx/nginx.conf
+      - ./sites/nginx2/:/data/sites/
+    command: ["nginx", "-g", "daemon off;"]
+
+networks:
+  front:
+  back1:
+    internal: true
+  back2:
+    internal: true
+
+
